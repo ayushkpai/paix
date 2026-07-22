@@ -3,13 +3,6 @@
 require "io/console"
 
 class PaiX
-  RESET  = "\e[0m"
-  CYAN   = "\e[36m"
-  BLUE   = "\e[34m"
-  GRAY   = "\e[90m"
-  PURPLE = "\e[95m"
-  INVERT = "\e[7m"
-
   def initialize
     @root = File.expand_path("~")
     @cwd = @root
@@ -33,13 +26,13 @@ class PaiX
   def draw
     clear
 
-    puts "#{BLUE}PaiX#{RESET}"
-    puts "#{PURPLE}Root: #{@root}#{RESET}"
-    puts "#{PURPLE}Path: #{@cwd}#{RESET}"
+    puts "PaiX"
+    puts "Root: #{@root}"
+    puts "Path: #{@cwd}"
     puts "-" * 60
 
     if @files.empty?
-      puts "#{GRAY}No files here#{RESET}"
+      puts "No files here"
       return
     end
 
@@ -53,14 +46,14 @@ class PaiX
       line = "  #{icon} #{f}"
 
       if i == @index
-        puts "#{INVERT}➤ #{line}#{RESET} #{GRAY}| #{preview}#{RESET}"
+        puts "➤ #{line} | #{preview}"
       else
         puts line
       end
     end
 
     puts "-" * 60
-    puts "#{GRAY}↑↓ move | Enter open | b back | r home | q quit#{RESET}"
+    puts "↑↓ move | Enter open | b back | r home | q quit"
   end
 
   def preview_text
@@ -99,12 +92,12 @@ class PaiX
 
     loop do
       clear
-      puts "#{BLUE}FILE VIEW#{RESET}"
-      puts "#{PURPLE}#{path}#{RESET}"
+      puts "FILE VIEW"
+      puts "#{path}"
       puts "-" * 60
       puts content
       puts "-" * 60
-      puts "#{GRAY}ESC = back#{RESET}"
+      puts "ESC = back"
 
       break if STDIN.getch == "\e"
     end
