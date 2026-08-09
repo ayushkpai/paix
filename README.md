@@ -1,11 +1,11 @@
-# PaiX
+# Diskettui
 
 - Open your terminal and clone this repository
 
   First make sure you have a ssh key if you dont have go to my dotfiles repository and follow the instructions
 
   ```
-  git clone git@github.com:ayushkpai/paix.git
+  git clone git@github.com:ayushkpai/diskettui.git
   ```
 
 - Next install ruby
@@ -15,5 +15,5 @@
 - To run the project
 
   ```
-  bin/paix
+  bin/diskettui
   ```

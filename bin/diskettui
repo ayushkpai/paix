@@ -2,7 +2,7 @@
 
 require "io/console"
 
-class PaiX
+class Diskettui
   RESET = "\e[0m"
   BOLD  = "\e[1m"
   DIM   = "\e[2m"
@@ -54,7 +54,7 @@ class PaiX
     clear
 
     line
-    line "  #{BOLD}#{CYAN}PaiX#{RESET}"
+    line "  #{BOLD}#{CYAN}Diskettui#{RESET}"
     line "  #{DIM}#{@cwd}#{RESET}"
     line
 
@@ -246,4 +246,4 @@ class PaiX
   end
 end
 
-PaiX.new.run
+Diskettui.new.run
