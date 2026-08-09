@@ -3,6 +3,16 @@
 require "io/console"
 
 class PaiX
+  RESET = "\e[0m"
+  BOLD  = "\e[1m"
+  DIM   = "\e[2m"
+  CYAN  = "\e[36m"
+  BLUE  = "\e[34m"
+  WHITE = "\e[97m"
+
+  ESC     = "\e"
+  CTRL_C  = "\x03"
+
   def initialize
     @root = File.expand_path("~")
     @cwd = @root
@@ -11,65 +21,100 @@ class PaiX
     @index = 0
 
     load_files
+
+    STDOUT.sync = true
   end
 
   def load_files
     @files = Dir.entries(@cwd)
-      .reject { |f| f == "." || f == ".." }
-      .sort
+      .reject { |file| file == "." || file == ".." }
+      .sort_by(&:downcase)
+
+    @index = 0 if @index >= @files.length
   end
 
   def clear
     print "\e[2J\e[H"
   end
 
+  def hide_cursor
+    print "\e[?25l"
+  end
+
+  def show_cursor
+    print "\e[?25h"
+  end
+
+  def line(text = "")
+    print text
+    print "\r\n"
+  end
+
   def draw
     clear
 
-    puts "PaiX"
-    puts "Root: #{@root}"
-    puts "Path: #{@cwd}"
-    puts "-" * 60
+    line
+    line "  #{BOLD}#{CYAN}PaiX#{RESET}"
+    line "  #{DIM}#{@cwd}#{RESET}"
+    line
 
     if @files.empty?
-      puts "No files here"
-      return
-    end
-
-    preview = preview_text
-
-    @files.each_with_index do |f, i|
-      path = File.join(@cwd, f)
-
-      icon = File.directory?(path) ? "🗂️" : "📄"
-
-      line = "  #{icon} #{f}"
-
-      if i == @index
-        puts "➤ #{line} | #{preview}"
-      else
-        puts line
+      line "  #{DIM}No files here#{RESET}"
+    else
+      @files.each_with_index do |file, index|
+        draw_file(file, index)
       end
     end
 
-    puts "-" * 60
-    puts "↑↓ move | Enter open | b back | r home | q quit"
+    line
+    line "  #{DIM}#{'─' * 56}#{RESET}"
+    line
+    line "  #{DIM}↑↓#{RESET} move  " \
+         "#{DIM}Enter#{RESET} open  " \
+         "#{DIM}Esc#{RESET} back  " \
+         "#{DIM}Ctrl+C#{RESET} quit"
   end
 
-  def preview_text
-    return "" if @files.empty?
-
-    path = File.join(@cwd, @files[@index])
+  def draw_file(file, index)
+    path = File.join(@cwd, file)
+    selected = index == @index
 
     if File.directory?(path)
-      return "DIR"
+      icon = "▸"
+      color = BLUE
+    else
+      icon = "•"
+      color = WHITE
     end
 
-    begin
-      File.readlines(path)[0..2].map(&:strip).join(" | ")
-    rescue
-      "binary"
+    if selected
+      line "  #{CYAN}❯#{RESET} #{BOLD}#{color}#{icon} #{file}#{RESET}"
+    else
+      line "    #{color}#{icon} #{file}#{RESET}"
     end
+  end
+
+  def up
+    return if @files.empty?
+
+    @index -= 1
+    @index = @files.length - 1 if @index < 0
+  end
+
+  def down
+    return if @files.empty?
+
+    @index += 1
+    @index = 0 if @index >= @files.length
+  end
+
+  def back
+    return if @stack.empty?
+
+    @cwd = @stack.pop
+    @index = 0
+
+    load_files
   end
 
   def enter
@@ -78,9 +123,10 @@ class PaiX
     path = File.join(@cwd, @files[@index])
 
     if File.directory?(path)
-      @stack.push(@cwd)
+      @stack << @cwd
       @cwd = path
       @index = 0
+
       load_files
     else
       view_file(path)
@@ -88,67 +134,114 @@ class PaiX
   end
 
   def view_file(path)
-    content = File.readlines(path) rescue ["[cannot read file]"]
+    content =
+      begin
+        File.readlines(path, chomp: true)
+      rescue
+        ["[cannot read file]"]
+      end
 
     loop do
       clear
-      puts "FILE VIEW"
-      puts "#{path}"
-      puts "-" * 60
-      puts content
-      puts "-" * 60
-      puts "ESC = back"
 
-      break if STDIN.getch == "\e"
+      line
+      line "  #{BOLD}#{CYAN}FILE VIEW#{RESET}"
+      line "  #{DIM}#{path}#{RESET}"
+      line
+      line "  #{DIM}#{'─' * 56}#{RESET}"
+
+      content.each do |text|
+        line "  #{text}"
+      end
+
+      line "  #{DIM}#{'─' * 56}#{RESET}"
+      line
+      line "  #{DIM}Esc#{RESET} back  #{DIM}Ctrl+C#{RESET} quit"
+
+      key = read_key
+
+      case key
+      when :escape
+        return
+      when :ctrl_c
+        quit
+      end
     end
   end
 
-  def back
-    return if @stack.empty?
+  def read_key
+    first = STDIN.getch
 
-    @cwd = @stack.pop
-    load_files
-    @index = 0
+    return :ctrl_c if first == CTRL_C
+
+    if first == ESC
+      ready = IO.select([STDIN], nil, nil, 0.05)
+      return :escape unless ready
+
+      second = STDIN.getch
+
+      if second == "["
+        ready = IO.select([STDIN], nil, nil, 0.05)
+
+        return :escape unless ready
+
+        third = STDIN.getch
+
+        case third
+        when "A"
+          return :up
+
+        when "B"
+          return :down
+
+        else
+          return :escape
+        end
+      end
+
+      return :escape
+    end
+
+    return :enter if first == "\r" || first == "\n"
+
+    first
   end
 
-  def home
-    @cwd = @root
-    @stack = []
-    load_files
-    @index = 0
-  end
-
-  def up
-    return if @files.empty?
-    @index = (@index - 1) % @files.size
-  end
-
-  def down
-    return if @files.empty?
-    @index = (@index + 1) % @files.size
+  def quit
+    show_cursor
+    clear
+    exit
   end
 
   def run
-    loop do
-      draw
-      input = STDIN.getch
+    hide_cursor
 
-      if input == "\e"
-        seq = STDIN.getch rescue nil
-        if seq == "["
-          arrow = STDIN.getch rescue nil
-          up if arrow == "A"
-          down if arrow == "B"
+    begin
+      STDIN.raw do
+        loop do
+          draw
+
+          case read_key
+          when :up
+            up
+
+          when :down
+            down
+
+          when :enter
+            enter
+
+          when :escape
+            back
+
+          when :ctrl_c
+            quit
+          end
         end
-        next
       end
-
-      case input
-      when "\r" then enter
-      when "b"  then back
-      when "r"  then home
-      when "q"  then break
-      end
+    ensure
+      show_cursor
+      clear
     end
   end
 end
