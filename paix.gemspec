@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name        = "paix"
-  spec.version     = "1.0.0"
+  spec.version     = "2.0.0"
   spec.author      = "Ayush Pai"
   spec.email       = "ayushpai@ayushpai.com"
   spec.summary     = "A gem for paix"
